@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>NSBluetoothAlwaysUsageDescription</key>
+    <string>This app uses Bluetooth to connect to your Companion Robot for control and communication.</string>
+    <key>NSBluetoothPeripheralUsageDescription</key>
+    <string>This app needs Bluetooth to discover and communicate with nearby Companion Robots.</string>
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>This app needs local network access to discover and communicate with the Companion Robot gateway on your WiFi network.</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Microphone access is used for voice commands to control your robot.</string>
+    <key>NSCameraUsageDescription</key>
+    <string>Camera access is used to scan QR codes for robot pairing.</string>
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>bluetooth-central</string>
+    </array>
+    <key>CFBundleName</key>
+    <string>Companion Robot</string>
+    <key>CFBundleDisplayName</key>
+    <string>Companion Robot</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.companion.robot</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>CFBundleShortVersionString</key>
+    <string>0.1.0</string>
+    <key>LSRequiresIPhoneOS</key>
+    <true/>
+    <key>UIApplicationSceneManifest</key>
+    <dict>
+        <key>UIApplicationSupportsMultipleScenes</key>
+        <false/>
+    </dict>
+    <key>UILaunchScreen</key>
+    <dict/>
+    <key>UISupportedInterfaceOrientations</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+    </array>
+</dict>
+</plist>

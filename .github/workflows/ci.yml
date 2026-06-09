@@ -1,0 +1,156 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # ── Rust checks (workspace-level) ──────────────────────────
+  rust-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          components: clippy, rustfmt
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.toml') }}
+
+      - name: Check format
+        run: cargo fmt --all -- --check
+        continue-on-error: true
+
+      - name: Clippy
+        run: cargo clippy --workspace -- -D warnings
+        continue-on-error: true
+
+      - name: Build
+        run: cargo build --workspace
+
+  # ── BCP core tests ─────────────────────────────────────────
+  bcp-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Run BCP core tests
+        run: cargo test --manifest-path crates/bcp-core/Cargo.toml
+
+      - name: Run BCP core tests (no_std)
+        run: cargo test --manifest-path crates/bcp-core/Cargo.toml --no-default-features
+
+  # ── Service unit tests ─────────────────────────────────────
+  service-tests:
+    runs-on: ubuntu-latest
+    services:
+      nats:
+        image: nats:2.10-alpine
+        ports:
+          - 4222:4222
+      postgres:
+        image: timescale/timescaledb:latest-pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: companion
+        ports:
+          - 5432:5432
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Init DB
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -d companion -f scripts/init.sql
+
+      - name: Run gateway tests
+        env:
+          GATEWAY_NATS_URL: "nats://localhost:4222"
+        run: cargo test -p gateway -- --test-threads=1
+
+      - name: Run device-manager tests
+        env:
+          DEVICE_MGR_DATABASE_URL: "postgres://postgres:postgres@localhost:5432/companion"
+          DEVICE_MGR_REDIS_URL: "redis://localhost:6379"
+          DEVICE_MGR_NATS_URL: "nats://localhost:4222"
+        run: cargo test -p device-manager -- --test-threads=1
+
+      - name: Run scheduler tests
+        env:
+          SCHEDULER_DATABASE_URL: "postgres://postgres:postgres@localhost:5432/companion"
+          SCHEDULER_REDIS_URL: "redis://localhost:6379"
+          SCHEDULER_NATS_URL: "nats://localhost:4222"
+        run: cargo test -p scheduler -- --test-threads=1
+
+      - name: Run AI service tests
+        env:
+          AI_NATS_URL: "nats://localhost:4222"
+        run: cargo test -p ai-service -- --test-threads=1
+
+  # ── Protocol conformance tests ─────────────────────────────
+  protocol-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Run protocol conformance tests
+        run: cargo test --manifest-path tests/protocol/Cargo.toml
+
+  # ── Integration tests ──────────────────────────────────────
+  integration-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Start docker-compose environment
+        run: docker compose up -d --wait
+
+      - name: Init database schema
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -d companion -f scripts/init.sql
+
+      - name: Run integration tests
+        env:
+          GATEWAY_WS_ADDR: "127.0.0.1:8080"
+          TEST_DATABASE_URL: "postgres://postgres:postgres@localhost:5432/companion"
+          TEST_NATS_URL: "nats://localhost:4222"
+          TEST_REDIS_URL: "redis://localhost:6379"
+        run: cargo test -p integration-tests -- --test-threads=1 --ignored
+
+      - name: Cleanup
+        if: always()
+        run: docker compose down -v --remove-orphans

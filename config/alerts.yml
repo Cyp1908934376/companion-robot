@@ -1,0 +1,106 @@
+groups:
+  - name: companion_robot
+    rules:
+      # ── Robot alerts ──────────────────────────────────────
+      - alert: RobotOffline
+        expr: device_mgr_online_robots < 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "No robots online"
+          description: "Zero robots have been online for over 5 minutes."
+
+      - alert: HighOfflineRate
+        expr: rate(device_mgr_offline_events_total[5m]) > 0.2
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High robot offline rate"
+          description: "{{ $value }} robots going offline per second."
+
+      - alert: LowBattery
+        expr: robot_battery_percent < 15
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Robot battery low"
+          description: "Robot {{ $labels.short_id }} battery at {{ $value }}%."
+
+      # ── Gateway alerts ────────────────────────────────────
+      - alert: GatewayHighConnections
+        expr: gateway_connections > 800
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Gateway connections approaching limit"
+          description: "Gateway has {{ $value }} connections (80% of capacity)."
+
+      - alert: GatewayHighLatency
+        expr: histogram_quantile(0.95, rate(gateway_cmd_latency_ms_bucket[5m])) > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Gateway p95 latency exceeds 100ms"
+          description: "p95 command latency is {{ $value }}ms."
+
+      # ── Scheduler alerts ──────────────────────────────────
+      - alert: HighTaskFailureRate
+        expr: rate(scheduler_tasks_failed_total[10m]) / rate(scheduler_tasks_dispatched_total[10m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Task failure rate > 10%"
+          description: "Task failure rate is {{ $value | humanizePercentage }}."
+
+      - alert: TaskQueueBacklog
+        expr: scheduler_tasks_pending > 50
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Task queue backlog"
+          description: "{{ $value }} tasks pending for over 10 minutes."
+
+      # ── AI alerts ─────────────────────────────────────────
+      - alert: AICircuitBreakerOpen
+        expr: ai_circuit_breaker_open == 1
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "AI circuit breaker open"
+          description: "AI dialogue API failure rate exceeded threshold, circuit breaker engaged."
+
+      - alert: AISlowInference
+        expr: histogram_quantile(0.95, rate(ai_asr_latency_ms_bucket[5m])) > 5000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "AI ASR latency high"
+          description: "p95 ASR latency is {{ $value }}ms."
+
+      # ── Infrastructure alerts ─────────────────────────────
+      - alert: NATSDisconnected
+        expr: nats_connections == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "NATS has no connections"
+          description: "All services may be down or disconnected from NATS."
+
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service {{ $labels.job }} is down"
+          description: "Service {{ $labels.job }} has been unreachable for 1 minute."

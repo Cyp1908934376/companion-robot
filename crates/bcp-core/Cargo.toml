@@ -1,0 +1,13 @@
+[package]
+name = "bcp-core"
+version = "0.1.0"
+edition = "2021"
+description = "BCP (Bundle Command Protocol) stack — no_std, shared between firmware and main brain"
+license = "MIT"
+
+[dependencies]
+heapless = "0.8"
+
+[features]
+default = ["std"]
+std = []

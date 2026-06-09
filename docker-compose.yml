@@ -1,0 +1,169 @@
+version: "3.9"
+
+# Companion Robot — development environment
+# Start: docker-compose up -d
+# Stop:  docker-compose down -v
+
+services:
+  # ── Message Bus ──────────────────────────────────────────
+  nats:
+    image: nats:2.10-alpine
+    command: "--jetstream --store_dir /data"
+    ports:
+      - "4222:4222"   # client
+      - "8222:8222"   # monitoring
+    volumes:
+      - nats_data:/data
+    healthcheck:
+      test: ["CMD", "nats", "server", "check", "-s", "nats://localhost:4222"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ── Database ─────────────────────────────────────────────
+  postgres:
+    image: timescale/timescaledb:latest-pg16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: companion
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d companion"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Cache ────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ── Main-brain services ──────────────────────────────────
+  gateway:
+    build:
+      context: .
+      dockerfile: services/gateway/Dockerfile
+    environment:
+      GATEWAY_WS_ADDR: "0.0.0.0:8080"
+      GATEWAY_TCP_ADDR: "0.0.0.0:9000"
+      GATEWAY_NATS_URL: "nats://nats:4222"
+    ports:
+      - "8080:8080"   # WebSocket
+      - "9000:9000"   # TCP
+      - "9180:9180"   # metrics
+    depends_on:
+      nats:
+        condition: service_healthy
+    restart: unless-stopped
+
+  device-manager:
+    build:
+      context: .
+      dockerfile: services/device-manager/Dockerfile
+    environment:
+      DEVICE_MGR_DATABASE_URL: "postgres://postgres:postgres@postgres:5432/companion"
+      DEVICE_MGR_REDIS_URL: "redis://redis:6379"
+      DEVICE_MGR_NATS_URL: "nats://nats:4222"
+      DEVICE_MGR_HEARTBEAT_TIMEOUT: "15"
+    ports:
+      - "8081:8081"
+      - "9181:9181"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+    restart: unless-stopped
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: services/scheduler/Dockerfile
+    environment:
+      SCHEDULER_DATABASE_URL: "postgres://postgres:postgres@postgres:5432/companion"
+      SCHEDULER_REDIS_URL: "redis://redis:6379"
+      SCHEDULER_NATS_URL: "nats://nats:4222"
+    ports:
+      - "8082:8082"
+      - "9182:9182"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+    restart: unless-stopped
+
+  ai-service:
+    build:
+      context: .
+      dockerfile: services/ai/Dockerfile
+    environment:
+      AI_NATS_URL: "nats://nats:4222"
+      AI_DIALOGUE_BACKEND: "local"
+      AI_DIALOGUE_API_KEY: ""
+    ports:
+      - "8083:8083"
+      - "9183:9183"
+    depends_on:
+      nats:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── Monitoring ───────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.enable-lifecycle"
+    ports:
+      - "9090:9090"
+    depends_on:
+      - gateway
+      - device-manager
+      - scheduler
+      - ai-service
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_INSTALL_PLUGINS: ""
+    volumes:
+      - ./config/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./config/grafana/datasources:/etc/grafana/provisioning/datasources
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+volumes:
+  nats_data:
+  pg_data:
+  redis_data:
+  prometheus_data:
+  grafana_data:

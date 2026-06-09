@@ -1,0 +1,121 @@
+{
+  "title": "Companion Robot — Cluster Overview",
+  "uid": "companion-robot",
+  "panels": [
+    {
+      "title": "Online Robots",
+      "type": "stat",
+      "targets": [
+        { "expr": "device_mgr_online_robots", "legendFormat": "Online" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": { "steps": [{ "color": "red", "value": 0 }, { "color": "green", "value": 1 }] }
+        }
+      },
+      "gridPos": { "x": 0, "y": 0, "w": 4, "h": 3 }
+    },
+    {
+      "title": "Gateway Connections",
+      "type": "stat",
+      "targets": [
+        { "expr": "gateway_connections", "legendFormat": "Connections" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": { "steps": [{ "color": "green", "value": 0 }, { "color": "yellow", "value": 800 }, { "color": "red", "value": 950 }] }
+        }
+      },
+      "gridPos": { "x": 4, "y": 0, "w": 4, "h": 3 }
+    },
+    {
+      "title": "Task Success Rate",
+      "type": "stat",
+      "targets": [
+        { "expr": "rate(scheduler_tasks_completed_total[5m]) / (rate(scheduler_tasks_completed_total[5m]) + rate(scheduler_tasks_failed_total[5m])) * 100", "legendFormat": "Success %" }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "percent", "decimals": 1,
+          "thresholds": { "steps": [{ "color": "red", "value": 0 }, { "color": "yellow", "value": 90 }, { "color": "green", "value": 99 }] }
+        }
+      },
+      "gridPos": { "x": 8, "y": 0, "w": 4, "h": 3 }
+    },
+    {
+      "title": "AI Circuit Breaker",
+      "type": "stat",
+      "targets": [
+        { "expr": "ai_circuit_breaker_open", "legendFormat": "CB" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": { "steps": [{ "color": "green", "value": 0 }, { "color": "red", "value": 1 }] },
+          "mappings": [{ "type": "value", "value": "0", "text": "CLOSED" }, { "type": "value", "value": "1", "text": "OPEN" }]
+        }
+      },
+      "gridPos": { "x": 12, "y": 0, "w": 4, "h": 3 }
+    },
+    {
+      "title": "Gateway Command Latency (p50/p95/p99)",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "histogram_quantile(0.50, rate(gateway_cmd_latency_ms_bucket[5m]))", "legendFormat": "p50" },
+        { "expr": "histogram_quantile(0.95, rate(gateway_cmd_latency_ms_bucket[5m]))", "legendFormat": "p95" },
+        { "expr": "histogram_quantile(0.99, rate(gateway_cmd_latency_ms_bucket[5m]))", "legendFormat": "p99" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "ms" } },
+      "gridPos": { "x": 0, "y": 3, "w": 8, "h": 8 }
+    },
+    {
+      "title": "Message Throughput",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "rate(gateway_messages_uplink_total[1m])", "legendFormat": "Uplink" },
+        { "expr": "rate(gateway_messages_downlink_total[1m])", "legendFormat": "Downlink" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "ops" } },
+      "gridPos": { "x": 8, "y": 3, "w": 8, "h": 8 }
+    },
+    {
+      "title": "Heartbeats Received",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "rate(device_mgr_heartbeats_total[1m])", "legendFormat": "Heartbeats/s" }
+      ],
+      "gridPos": { "x": 0, "y": 11, "w": 8, "h": 6 }
+    },
+    {
+      "title": "Robot Offline Events",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "rate(device_mgr_offline_events_total[5m])", "legendFormat": "Offline/min" }
+      ],
+      "gridPos": { "x": 8, "y": 11, "w": 8, "h": 6 }
+    },
+    {
+      "title": "AI Inference Latency by Type",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "histogram_quantile(0.95, rate(ai_asr_latency_ms_bucket[5m]))", "legendFormat": "ASR p95" },
+        { "expr": "histogram_quantile(0.95, rate(ai_nlu_latency_ms_bucket[5m]))", "legendFormat": "NLU p95" },
+        { "expr": "histogram_quantile(0.95, rate(ai_dialogue_latency_ms_bucket[5m]))", "legendFormat": "Dialogue p95" },
+        { "expr": "histogram_quantile(0.95, rate(ai_vision_latency_ms_bucket[5m]))", "legendFormat": "Vision p95" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "ms" } },
+      "gridPos": { "x": 0, "y": 17, "w": 16, "h": 8 }
+    },
+    {
+      "title": "Tasks Overview",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "rate(scheduler_tasks_created_total[1m])", "legendFormat": "Created" },
+        { "expr": "rate(scheduler_tasks_completed_total[1m])", "legendFormat": "Completed" },
+        { "expr": "rate(scheduler_tasks_failed_total[1m])", "legendFormat": "Failed" }
+      ],
+      "gridPos": { "x": 0, "y": 25, "w": 16, "h": 6 }
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 38,
+  "version": 1
+}

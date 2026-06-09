@@ -1,0 +1,9 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/bcp-core",
+    "services/gateway",
+    "services/device-manager",
+    "services/scheduler",
+    "services/ai",
+]

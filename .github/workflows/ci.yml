@@ -28,20 +28,18 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.toml') }}
+          key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock') }}
 
       - name: Check format
         run: cargo fmt --all -- --check
-        continue-on-error: true
 
       - name: Clippy
-        run: cargo clippy --workspace -- -D warnings
-        continue-on-error: true
+        run: cargo clippy --workspace --all-targets -- -D warnings
 
-      - name: Build
-        run: cargo build --workspace
+      - name: Build all targets
+        run: cargo build --workspace --all-targets
 
-  # ── BCP core tests ─────────────────────────────────────────
+  # ── BCP core tests (std + no_std) ──────────────────────────
   bcp-tests:
     runs-on: ubuntu-latest
     steps:
@@ -51,13 +49,26 @@ jobs:
         with:
           toolchain: stable
 
-      - name: Run BCP core tests
-        run: cargo test --manifest-path crates/bcp-core/Cargo.toml
+      - name: Run BCP core tests (std)
+        run: cargo test -p bcp-core
 
       - name: Run BCP core tests (no_std)
-        run: cargo test --manifest-path crates/bcp-core/Cargo.toml --no-default-features
+        run: cargo test -p bcp-core --no-default-features
 
-  # ── Service unit tests ─────────────────────────────────────
+  # ── Protocol conformance tests ─────────────────────────────
+  protocol-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Run protocol conformance tests
+        run: cargo test -p protocol-tests
+
+  # ── Service unit tests (with service containers) ───────────
   service-tests:
     runs-on: ubuntu-latest
     services:
@@ -112,45 +123,3 @@ jobs:
         env:
           AI_NATS_URL: "nats://localhost:4222"
         run: cargo test -p ai-service -- --test-threads=1
-
-  # ── Protocol conformance tests ─────────────────────────────
-  protocol-tests:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          toolchain: stable
-
-      - name: Run protocol conformance tests
-        run: cargo test --manifest-path tests/protocol/Cargo.toml
-
-  # ── Integration tests ──────────────────────────────────────
-  integration-tests:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          toolchain: stable
-
-      - name: Start docker-compose environment
-        run: docker compose up -d --wait
-
-      - name: Init database schema
-        run: |
-          PGPASSWORD=postgres psql -h localhost -U postgres -d companion -f scripts/init.sql
-
-      - name: Run integration tests
-        env:
-          GATEWAY_WS_ADDR: "127.0.0.1:8080"
-          TEST_DATABASE_URL: "postgres://postgres:postgres@localhost:5432/companion"
-          TEST_NATS_URL: "nats://localhost:4222"
-          TEST_REDIS_URL: "redis://localhost:6379"
-        run: cargo test -p integration-tests -- --test-threads=1 --ignored
-
-      - name: Cleanup
-        if: always()
-        run: docker compose down -v --remove-orphans

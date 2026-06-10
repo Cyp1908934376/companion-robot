@@ -8,7 +8,16 @@
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
       "Bash(git remote *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(cargo test *)",
+      "Bash(cargo build *)",
+      "Bash(cargo check *)",
+      "Bash(git *)",
+      "Bash(sed -i 's/cmd\\\\.type = MOTOR_CMD_MOVE, \\\\.move\\\\.direction, cmd\\\\.speed/cmd.move.direction, cmd.move.speed/g' firmware/components/behavior/offline.c)",
+      "Bash(sed -i '/motor_cmd_t/,/};/{ s/\\\\.speed\\\\\\(\\\\s*\\\\\\)=/\\\\.move.speed\\\\1=/g; }' firmware/components/behavior/offline.c)",
+      "Bash(sed -i '105s/.*/        ESP_LOGI\\(TAG, \"offline motor: dir=%d speed=%d\", cmd.move.direction, cmd.move.speed\\);/' firmware/components/behavior/offline.c)",
+      "Bash(sed -i '98,103s/\\\\.speed\\\\\\(\\\\s*\\\\\\)=/.move.speed\\\\1=/g' firmware/components/behavior/offline.c)",
+      "Bash(sed -i '230,240s/\\\\\\(\\\\\"offline motor\\\\|stop_cmd\\\\|explore_cmd\\\\|fwd_cmd\\\\\\)/PLACEHOLDER/g' firmware/components/behavior/offline.c)"
     ]
   }
 }

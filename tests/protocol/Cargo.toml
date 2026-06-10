@@ -1,0 +1,12 @@
+[package]
+name = "protocol-tests"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+bcp-core = { path = "../../crates/bcp-core" }
+heapless = "0.8"
+
+[dev-dependencies]
+hex = "0.4"

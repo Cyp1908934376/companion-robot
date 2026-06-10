@@ -6,4 +6,5 @@ members = [
     "services/device-manager",
     "services/scheduler",
     "services/ai",
+    "tests/protocol",
 ]
